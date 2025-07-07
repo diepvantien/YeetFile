@@ -29,7 +29,7 @@ class YeetFileApp {
         this.initializeApp();
     }
 
-    async initializeApp() {
+    async initializeApp() {å
         this.setupEventListeners();
         this.setupDragAndDrop();
         this.loadHistory();
@@ -536,28 +536,16 @@ class YeetFileApp {
             fileItem.status = 'sending';
             fileItem.startTime = Date.now();
             this.updateFileProgress(fileId, 0, 'Preparing...');
-            this.dataChannel.send(JSON.stringify({
-                fileName: fileItem.name,
-                fileSize: fileItem.size,
-                fileType: fileItem.type || 'application/octet-stream',
-                fileId: fileItem.id
-            }));
-            // Tối ưu chunk size theo trình duyệt
-            let chunkSize = 64 * 1024; // 64KB mặc định
-            const ua = navigator.userAgent;
-            const isChrome = /Chrome\//.test(ua) && !/Edge\//.test(ua);
-            const isEdge = /Edg\//.test(ua);
-            const isModern = isChrome || isEdge;
-            // Nếu là trình duyệt hiện đại, tăng chunk size
-            if (isModern) {
-                chunkSize = 128 * 1024;
-                // Nếu mạng ổn định (có thể kiểm tra thêm), tăng lên 256KB
-                if (navigator.connection && navigator.connection.downlink >= 50) {
-                    chunkSize = 256 * 1024;
-                }
-            }
+            const MAX_BUFFERED_AMOUNT = 8 * 1024 * 1024; // 8MB
             let offset = 0;
             const fileReader = new FileReader();
+            const sendChunkWithBufferCheck = (chunk) => {
+                if (this.dataChannel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
+                    setTimeout(() => sendChunkWithBufferCheck(chunk), 10); // Đợi 10ms rồi thử lại
+                    return;
+                }
+                this.dataChannel.send(chunk);
+            };
             const readSlice = () => {
                 const slice = fileItem.file.slice(offset, offset + chunkSize);
                 fileReader.readAsArrayBuffer(slice);
@@ -567,7 +555,7 @@ class YeetFileApp {
                     this.updateFileStatus(fileId, 'Error reading file');
                     return;
                 }
-                this.dataChannel.send(e.target.result);
+                sendChunkWithBufferCheck(e.target.result);
                 offset += chunkSize;
                 const progress = Math.min(100, (offset / fileItem.size) * 100);
                 this.updateFileProgress(fileId, progress, 'Sending...');
