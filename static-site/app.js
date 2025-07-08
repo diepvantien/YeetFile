@@ -29,7 +29,7 @@ class YeetFileApp {
         this.initializeApp();
     }
 
-    async initializeApp() {
+    async initializeApp() {å
         this.setupEventListeners();
         this.setupDragAndDrop();
         this.loadHistory();
@@ -536,6 +536,20 @@ class YeetFileApp {
             fileItem.status = 'sending';
             fileItem.startTime = Date.now();
             this.updateFileProgress(fileId, 0, 'Preparing...');
+            // Tối ưu chunk size theo trình duyệt
+            let chunkSize = 64 * 1024; // 64KB mặc định
+            const ua = navigator.userAgent;
+            const isChrome = /Chrome\//.test(ua) && !/Edge\//.test(ua);
+            const isEdge = /Edg\//.test(ua);
+            const isModern = isChrome || isEdge;
+            // Nếu là trình duyệt hiện đại, tăng chunk size
+            if (isModern) {
+                chunkSize = 128 * 1024;
+                // Nếu mạng ổn định (có thể kiểm tra thêm), tăng lên 256KB
+                if (navigator.connection && navigator.connection.downlink >= 50) {
+                    chunkSize = 256 * 1024;
+                }
+            }
             const MAX_BUFFERED_AMOUNT = 8 * 1024 * 1024; // 8MB
             let offset = 0;
             const fileReader = new FileReader();
