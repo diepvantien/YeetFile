@@ -29,7 +29,7 @@ class YeetFileApp {
         this.initializeApp();
     }
 
-    async initializeApp() {
+    async initializeApp() {å
         this.setupEventListeners();
         this.setupDragAndDrop();
         this.loadHistory();
@@ -345,7 +345,7 @@ class YeetFileApp {
 
     handleDataChannelMessage(data) {
         if (typeof data === 'string') {
-            // Nhận metadata
+            // Nhận metadata hoặc các message JSON khác
             let info;
             try {
                 info = JSON.parse(data);
@@ -353,14 +353,10 @@ class YeetFileApp {
                 console.warn('Invalid metadata JSON:', data);
                 return;
             }
-            // Kiểm tra metadata hợp lệ
-            if (!info.fileId || !info.fileName || !info.fileSize || isNaN(info.fileSize)) {
-                console.warn('Invalid file metadata, skipping:', info);
-                return;
-            }
-            // Kiểm tra trùng fileId trong Receiving Queue
-            if (document.querySelector(`[data-file-id="${info.fileId}"]`)) {
-                console.log('File already exists in receiving queue, skipping...');
+            // Nếu là message encryption-key thì xử lý riêng, không coi là metadata file
+            if (info.type === 'encryption-key') {
+                // Xử lý key nếu cần (bạn có thể bổ sung logic ở đây)
+                // Ví dụ: this.handleEncryptionKey(info.key);
                 return;
             }
             // Nếu là message cancel-file
@@ -378,6 +374,17 @@ class YeetFileApp {
                 }
                 return;
             }
+            // Kiểm tra metadata hợp lệ (metadata file)
+            if (!info.fileId || !info.fileName || !info.fileSize || isNaN(info.fileSize)) {
+                console.warn('Invalid file metadata, skipping:', info);
+                return;
+            }
+            // Kiểm tra trùng fileId trong Receiving Queue
+            if (document.querySelector(`[data-file-id="${info.fileId}"]`)) {
+                console.log('File already exists in receiving queue, skipping...');
+                return;
+            }
+            // Nếu là metadata file, lưu lại để nhận chunk
             this.incomingFileInfo = info;
             this.incomingFileData = [];
             this.incomingBytesReceived = 0;
@@ -403,14 +410,11 @@ class YeetFileApp {
             this.incomingBytesReceived += data.byteLength;
             const progress = Math.min(100, (this.incomingBytesReceived / this.incomingFileInfo.fileSize) * 100);
             this.updateFileProgress(this.incomingFileInfo.fileId, progress, 'Receiving...');
-            
             // Kiểm tra chính xác hơn - chỉ hiển thị nút download khi nhận đủ
             if (this.incomingBytesReceived >= this.incomingFileInfo.fileSize && this.incomingDownloadInProgress) {
                 console.log('File transfer completed, showing download button...');
-                
                 // Lưu fileId trước khi reset state
                 const fileId = this.incomingFileInfo.fileId;
-                
                 // Tạo blob và lưu vào receivingFiles
                 const blob = new Blob(this.incomingFileData);
                 this.receivingFiles.set(fileId, {
@@ -419,7 +423,6 @@ class YeetFileApp {
                     type: this.incomingFileInfo.fileType,
                     blob: blob
                 });
-                
                 // Hiển thị nút download và ẩn nút cancel
                 const fileElement = document.querySelector(`[data-file-id="${fileId}"]`);
                 if (fileElement) {
@@ -444,7 +447,6 @@ class YeetFileApp {
                         statusText.textContent = 'Ready to download';
                     }
                 }
-                
                 // Reset state
                 this.incomingDownloadInProgress = false;
                 this.incomingFileInfo = null;
