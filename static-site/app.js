@@ -29,7 +29,7 @@ class YeetFileApp {
         this.initializeApp();
     }
 
-    async initializeApp() {å
+    async initializeApp() {
         this.setupEventListeners();
         this.setupDragAndDrop();
         this.loadHistory();
